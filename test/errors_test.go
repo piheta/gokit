@@ -217,3 +217,50 @@ func TestMapError_UnmarshalTypeError(t *testing.T) {
 		t.Errorf("Type = %q, want json", result.Type)
 	}
 }
+
+func TestMapError_WithMetadata(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		expectedStatus int
+		expectedType   string
+		expectedMsg    string
+	}{
+		{
+			name:           "APIError wrapped with metadata",
+			err:            gokit.WithMetadata(gokit.NewError(401, "not_found", "user not found"), "user_id", "123"),
+			expectedStatus: 401,
+			expectedType:   "not_found",
+			expectedMsg:    "user not found",
+		},
+		{
+			name:           "APIError wrapped with multiple metadata",
+			err:            gokit.WithMetadata(gokit.WithMetadata(gokit.NewError(403, "forbidden", "access denied"), "user_id", "123"), "resource", "admin"),
+			expectedStatus: 403,
+			expectedType:   "forbidden",
+			expectedMsg:    "access denied",
+		},
+		{
+			name:           "unwrapped APIError still works",
+			err:            gokit.NewError(404, "not_found", "resource not found"),
+			expectedStatus: 404,
+			expectedType:   "not_found",
+			expectedMsg:    "resource not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := gokit.MapError(tt.err, nil)
+			if result.Status() != tt.expectedStatus {
+				t.Errorf("Status() = %d, want %d", result.Status(), tt.expectedStatus)
+			}
+			if result.Type != tt.expectedType {
+				t.Errorf("Type = %q, want %q", result.Type, tt.expectedType)
+			}
+			if result.Error() != tt.expectedMsg {
+				t.Errorf("Error() = %q, want %q", result.Error(), tt.expectedMsg)
+			}
+		})
+	}
+}

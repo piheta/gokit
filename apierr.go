@@ -68,7 +68,8 @@ func MapError(err error, r *http.Request) *APIError {
 		*r = *r.WithContext(ctx)
 	}
 
-	if apiErr, ok := err.(*APIError); ok {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
 		return apiErr
 	}
 
