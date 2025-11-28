@@ -1,7 +1,7 @@
-# gokit
+# apicore
 
-[![Go Test](https://github.com/piheta/gokit/actions/workflows/test.yml/badge.svg)](https://github.com/piheta/gokit/actions/workflows/test.yml)
-[![Go Lint](https://github.com/piheta/gokit/actions/workflows/lint.yml/badge.svg)](https://github.com/piheta/gokit/actions/workflows/lint.yml)
+[![Go Test](https://github.com/piheta/apicore/actions/workflows/test.yml/badge.svg)](https://github.com/piheta/apicore/actions/workflows/test.yml)
+[![Go Lint](https://github.com/piheta/apicore/actions/workflows/lint.yml/badge.svg)](https://github.com/piheta/apicore/actions/workflows/lint.yml)
 
 A lightweight Go toolkit for building HTTP API services. Provides utilities for error handling, middleware support, and standardized API responses.
 
@@ -20,19 +20,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/piheta/gokit"
+	"github.com/piheta/apicore"
 )
 
 func main() {
 	mux := http.NewServeMux()
 
     // Register handlers using public middleware
-	mux.Handle("GET /api/ping", gokit.Public(Ping))
-	mux.Handle("GET /api/err", gokit.Public(Err))
+	mux.Handle("GET /api/ping", apicore.Public(Ping))
+	mux.Handle("GET /api/err", apicore.Public(Err))
 
 	server := &http.Server{
 		Addr:         ":8082",
-		Handler:      gokit.RouterRequestLogger(mux), // Wrap handlers with logging middleware
+		Handler:      apicore.RouterRequestLogger(mux), // Wrap handlers with logging middleware
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -45,15 +45,15 @@ func main() {
 
 // Working handler
 func Ping(w http.ResponseWriter, r *http.Request) error {
-	return gokit.JSON(w, 200, "pong")
+	return apicore.JSON(w, 200, "pong")
 }
 
 // Failing handler
 func Err(w http.ResponseWriter, r *http.Request) error {
-	err := gokit.NewError(404, "not_found", "user not found") // APIError (http code, type, message)
+	err := apicore.NewError(404, "not_found", "user not found") // APIError (http code, type, message)
 
     // MetaErr, wraps error with additional key-value pair metadata for logging
-	return gokit.WithMetadata(err, "user_id", "123", "email", "user@example.com") 
+	return apicore.WithMetadata(err, "user_id", "123", "email", "user@example.com") 
 }
 ```
 

@@ -1,5 +1,5 @@
-// Package gokit provides utilities for building HTTP API services.
-package gokit
+// Package apicore provides utilities for building HTTP API services.
+package apicore
 
 import (
 	"encoding/json"

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/piheta/gokit"
+	"github.com/piheta/apicore"
 )
 
 func TestJSON(t *testing.T) {
@@ -52,7 +52,7 @@ func TestJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			err := gokit.JSON(w, tt.statusCode, tt.data)
+			err := apicore.JSON(w, tt.statusCode, tt.data)
 
 			if err != nil {
 				t.Errorf("JSON() returned error: %v", err)
@@ -84,7 +84,7 @@ func TestJSONEncoding(t *testing.T) {
 		"tags": []string{"go", "testing"},
 	}
 
-	_ = gokit.JSON(w, http.StatusOK, testData)
+	_ = apicore.JSON(w, http.StatusOK, testData)
 
 	var result map[string]any
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
@@ -109,7 +109,7 @@ func BenchmarkJSON(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w := httptest.NewRecorder()
-		_ = gokit.JSON(w, http.StatusOK, data)
+		_ = apicore.JSON(w, http.StatusOK, data)
 	}
 }
 
@@ -118,7 +118,7 @@ func TestJSONWriteError(_ *testing.T) {
 	failingWriter := &failingResponseWriter{}
 
 	// This should not panic even if encoding fails
-	_ = gokit.JSON(failingWriter, http.StatusOK, map[string]string{"key": "value"})
+	_ = apicore.JSON(failingWriter, http.StatusOK, map[string]string{"key": "value"})
 }
 
 // failingResponseWriter is a mock ResponseWriter that fails on Write

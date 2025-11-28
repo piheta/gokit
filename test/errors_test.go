@@ -6,18 +6,18 @@ import (
 	"io"
 	"testing"
 
-	"github.com/piheta/gokit"
+	"github.com/piheta/apicore"
 )
 
 func TestAPIError_Error(t *testing.T) {
 	tests := []struct {
 		name     string
-		apiErr   *gokit.APIError
+		apiErr   *apicore.APIError
 		expected string
 	}{
 		{
 			name: "string message",
-			apiErr: &gokit.APIError{
+			apiErr: &apicore.APIError{
 				StatusCode: 400,
 				Type:       "parameter",
 				Message:    "invalid parameter",
@@ -26,7 +26,7 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "map message",
-			apiErr: &gokit.APIError{
+			apiErr: &apicore.APIError{
 				StatusCode: 400,
 				Type:       "validation",
 				Message: map[string]any{
@@ -38,7 +38,7 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "number message",
-			apiErr: &gokit.APIError{
+			apiErr: &apicore.APIError{
 				StatusCode: 500,
 				Type:       "internal",
 				Message:    42,
@@ -75,7 +75,7 @@ func TestAPIError_Status(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			apiErr := &gokit.APIError{StatusCode: tt.statusCode}
+			apiErr := &apicore.APIError{StatusCode: tt.statusCode}
 			if got := apiErr.Status(); got != tt.statusCode {
 				t.Errorf("Status() = %d, want %d", got, tt.statusCode)
 			}
@@ -112,7 +112,7 @@ func TestNewError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := gokit.NewError(tt.code, tt.errtype, tt.message)
+			err := apicore.NewError(tt.code, tt.errtype, tt.message)
 			if err.Status() != tt.expectedStatus {
 				t.Errorf("Status() = %d, want %d", err.Status(), tt.expectedStatus)
 			}
@@ -138,7 +138,7 @@ func TestMapError(t *testing.T) {
 		},
 		{
 			name: "existing APIError",
-			err: &gokit.APIError{
+			err: &apicore.APIError{
 				StatusCode: 403,
 				Type:       "forbidden",
 				Message:    "access denied",
@@ -180,7 +180,7 @@ func TestMapError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := gokit.MapError(tt.err, nil)
+			result := apicore.MapError(tt.err, nil)
 			if tt.err == nil {
 				if result != nil {
 					t.Errorf("MapError(nil) should return nil, got %v", result)
@@ -209,7 +209,7 @@ func TestMapError_UnmarshalTypeError(t *testing.T) {
 		t.Fatal("Expected unmarshal error, got nil")
 	}
 
-	result := gokit.MapError(err, nil)
+	result := apicore.MapError(err, nil)
 	if result.Status() != 400 {
 		t.Errorf("Status() = %d, want 400", result.Status())
 	}
@@ -228,21 +228,21 @@ func TestMapError_WithMetadata(t *testing.T) {
 	}{
 		{
 			name:           "APIError wrapped with metadata",
-			err:            gokit.WithMetadata(gokit.NewError(401, "not_found", "user not found"), "user_id", "123"),
+			err:            apicore.WithMetadata(apicore.NewError(401, "not_found", "user not found"), "user_id", "123"),
 			expectedStatus: 401,
 			expectedType:   "not_found",
 			expectedMsg:    "user not found",
 		},
 		{
 			name:           "APIError wrapped with multiple metadata",
-			err:            gokit.WithMetadata(gokit.WithMetadata(gokit.NewError(403, "forbidden", "access denied"), "user_id", "123"), "resource", "admin"),
+			err:            apicore.WithMetadata(apicore.WithMetadata(apicore.NewError(403, "forbidden", "access denied"), "user_id", "123"), "resource", "admin"),
 			expectedStatus: 403,
 			expectedType:   "forbidden",
 			expectedMsg:    "access denied",
 		},
 		{
 			name:           "unwrapped APIError still works",
-			err:            gokit.NewError(404, "not_found", "resource not found"),
+			err:            apicore.NewError(404, "not_found", "resource not found"),
 			expectedStatus: 404,
 			expectedType:   "not_found",
 			expectedMsg:    "resource not found",
@@ -251,7 +251,7 @@ func TestMapError_WithMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := gokit.MapError(tt.err, nil)
+			result := apicore.MapError(tt.err, nil)
 			if result.Status() != tt.expectedStatus {
 				t.Errorf("Status() = %d, want %d", result.Status(), tt.expectedStatus)
 			}
