@@ -1,0 +1,219 @@
+package test
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"testing"
+
+	"github.com/piheta/gokit"
+)
+
+func TestAPIError_Error(t *testing.T) {
+	tests := []struct {
+		name     string
+		apiErr   *gokit.APIError
+		expected string
+	}{
+		{
+			name: "string message",
+			apiErr: &gokit.APIError{
+				StatusCode: 400,
+				Type:       "parameter",
+				Message:    "invalid parameter",
+			},
+			expected: "invalid parameter",
+		},
+		{
+			name: "map message",
+			apiErr: &gokit.APIError{
+				StatusCode: 400,
+				Type:       "validation",
+				Message: map[string]any{
+					"field": "email",
+					"error": "invalid format",
+				},
+			},
+			expected: `{"error":"invalid format","field":"email"}`,
+		},
+		{
+			name: "number message",
+			apiErr: &gokit.APIError{
+				StatusCode: 500,
+				Type:       "internal",
+				Message:    42,
+			},
+			expected: "42",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.apiErr.Error()
+			if tt.name == "map message" {
+				// For map messages, just check it's valid JSON
+				var m map[string]any
+				if err := json.Unmarshal([]byte(result), &m); err != nil {
+					t.Errorf("Error() returned invalid JSON: %v", err)
+				}
+			} else if result != tt.expected {
+				t.Errorf("Error() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAPIError_Status(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+	}{
+		{name: "400", statusCode: 400},
+		{name: "404", statusCode: 404},
+		{name: "500", statusCode: 500},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiErr := &gokit.APIError{StatusCode: tt.statusCode}
+			if got := apiErr.Status(); got != tt.statusCode {
+				t.Errorf("Status() = %d, want %d", got, tt.statusCode)
+			}
+		})
+	}
+}
+
+func TestNewError(t *testing.T) {
+	tests := []struct {
+		name           string
+		code           int
+		errtype        string
+		message        any
+		expectedStatus int
+		expectedType   string
+	}{
+		{
+			name:           "string message",
+			code:           400,
+			errtype:        "parameter",
+			message:        "invalid param",
+			expectedStatus: 400,
+			expectedType:   "parameter",
+		},
+		{
+			name:           "map message",
+			code:           422,
+			errtype:        "validation",
+			message:        map[string]any{"field": "email"},
+			expectedStatus: 422,
+			expectedType:   "validation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := gokit.NewError(tt.code, tt.errtype, tt.message)
+			if err.Status() != tt.expectedStatus {
+				t.Errorf("Status() = %d, want %d", err.Status(), tt.expectedStatus)
+			}
+			if err.Type != tt.expectedType {
+				t.Errorf("Type = %q, want %q", err.Type, tt.expectedType)
+			}
+		})
+	}
+}
+
+func TestMapError(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		expectedStatus int
+		expectedType   string
+	}{
+		{
+			name:           "nil error",
+			err:            nil,
+			expectedStatus: 0,
+			expectedType:   "",
+		},
+		{
+			name: "existing APIError",
+			err: &gokit.APIError{
+				StatusCode: 403,
+				Type:       "forbidden",
+				Message:    "access denied",
+			},
+			expectedStatus: 403,
+			expectedType:   "forbidden",
+		},
+		{
+			name:           "JSON syntax error",
+			err:            &json.SyntaxError{Offset: 5},
+			expectedStatus: 400,
+			expectedType:   "json",
+		},
+		{
+			name:           "EOF error",
+			err:            io.EOF,
+			expectedStatus: 400,
+			expectedType:   "json",
+		},
+		{
+			name:           "unexpected EOF",
+			err:            io.ErrUnexpectedEOF,
+			expectedStatus: 400,
+			expectedType:   "json",
+		},
+		{
+			name:           "context cancelled",
+			err:            context.Canceled,
+			expectedStatus: 499,
+			expectedType:   "canceled",
+		},
+		{
+			name:           "context deadline exceeded",
+			err:            context.DeadlineExceeded,
+			expectedStatus: 504,
+			expectedType:   "canceled",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := gokit.MapError(tt.err)
+			if tt.err == nil {
+				if result != nil {
+					t.Errorf("MapError(nil) should return nil, got %v", result)
+				}
+				return
+			}
+			if result.Status() != tt.expectedStatus {
+				t.Errorf("Status() = %d, want %d", result.Status(), tt.expectedStatus)
+			}
+			if result.Type != tt.expectedType {
+				t.Errorf("Type = %q, want %q", result.Type, tt.expectedType)
+			}
+		})
+	}
+}
+
+func TestMapError_UnmarshalTypeError(t *testing.T) {
+	// Test actual JSON unmarshal type error by decoding invalid JSON
+	invalidJSON := `{"age": "not a number"}`
+	var data struct {
+		Age int `json:"age"`
+	}
+
+	err := json.Unmarshal([]byte(invalidJSON), &data)
+	if err == nil {
+		t.Fatal("Expected unmarshal error, got nil")
+	}
+
+	result := gokit.MapError(err)
+	if result.Status() != 400 {
+		t.Errorf("Status() = %d, want 400", result.Status())
+	}
+	if result.Type != "json" {
+		t.Errorf("Type = %q, want json", result.Type)
+	}
+}

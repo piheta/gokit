@@ -1,3 +1,4 @@
+// Package gokit provides utilities for building HTTP API services.
 package gokit
 
 import (
@@ -7,16 +8,16 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strings"
 )
 
-type ApiError struct {
+// APIError represents an API error with HTTP status code, type, and message.
+type APIError struct {
 	StatusCode int    `json:"status"` // HTTP status code
 	Type       string `json:"type"`
 	Message    any    `json:"msg"` // Support various message types
 }
 
-func (e *ApiError) Error() string {
+func (e *APIError) Error() string {
 	switch msg := e.Message.(type) {
 	case string:
 		return msg
@@ -31,32 +32,31 @@ func (e *ApiError) Error() string {
 	}
 }
 
-func (e *ApiError) Status() int {
+// Status returns the HTTP status code of the error.
+func (e *APIError) Status() int {
 	return e.StatusCode
 }
 
-func NewError(code int, errtype string, message any) *ApiError {
+// NewError creates a new APIError with the given status code, type, and message.
+func NewError(code int, errtype string, message any) *APIError {
 	if messageFmt, ok := message.(string); ok {
 		message = messageFmt
 	}
-	return &ApiError{
+	return &APIError{
 		StatusCode: code,
 		Type:       errtype,
 		Message:    message,
 	}
 }
 
-func MapError(err error) *ApiError {
+// MapError converts various error types to APIError with appropriate HTTP status codes and messages.
+func MapError(err error) *APIError {
 	if err == nil {
 		return nil
 	}
 
-	if apiErr, ok := err.(*ApiError); ok {
+	if apiErr, ok := err.(*APIError); ok {
 		return apiErr
-	}
-
-	if strings.Contains(err.Error(), "invalid UUID") {
-		return NewError(400, "parameter", "invalid parameter")
 	}
 
 	var syntaxErr *json.SyntaxError

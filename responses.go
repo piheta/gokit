@@ -1,3 +1,4 @@
+// Package gokit provides utilities for building HTTP API services.
 package gokit
 
 import (
@@ -5,6 +6,7 @@ import (
 	"net/http"
 )
 
+// JSON writes the given data as JSON to the response writer with the specified status code.
 func JSON(w http.ResponseWriter, statusCode int, data any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
