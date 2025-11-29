@@ -9,7 +9,19 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
+
+	"github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
 )
+
+var defaultTranslator ut.Translator
+
+// SetTranslator sets the translator for validation error messages.
+// Call this once during app initialization if you want translated error messages.
+func SetTranslator(trans ut.Translator) {
+	defaultTranslator = trans
+}
 
 type contextKey string
 
@@ -82,6 +94,12 @@ func MapError(err error, r *http.Request) *APIError {
 		return NewError(400, "json", "empty or incomplete JSON body")
 	}
 
+	var validationErr validator.ValidationErrors
+	if errors.As(err, &validationErr) {
+		formattedErrors := formatValidationErrors(validationErr)
+		return NewError(422, "validation", formattedErrors)
+	}
+
 	if errors.Is(err, context.Canceled) {
 		return NewError(499, "canceled", "request cancelled")
 	}
@@ -92,4 +110,26 @@ func MapError(err error, r *http.Request) *APIError {
 
 	slog.With("error", err).Error("Error missed mappers!")
 	return NewError(500, "internal", "internal server error")
+}
+
+func formatValidationErrors(validationErrors validator.ValidationErrors) map[string]string {
+	formattedErrors := make(map[string]string)
+
+	// If translator is set, use it. Otherwise, just use the tag names.
+	if defaultTranslator != nil {
+		translatedErrors := validationErrors.Translate(defaultTranslator)
+		for fieldError, translatedError := range translatedErrors {
+			parts := strings.Split(fieldError, ".")
+			fieldName := strings.ToLower(parts[len(parts)-1])
+			formattedErrors[fieldName] = translatedError
+		}
+	} else {
+		// Fallback: just use validation tags without translation
+		for _, err := range validationErrors {
+			fieldName := strings.ToLower(err.Field())
+			formattedErrors[fieldName] = err.Tag()
+		}
+	}
+
+	return formattedErrors
 }
