@@ -1,5 +1,5 @@
-// Package apicore provides utilities for building HTTP API services.
-package apicore
+// Package apierr provides API error types and error mapping utilities.
+package apierr
 
 import (
 	"context"

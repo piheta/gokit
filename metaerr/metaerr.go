@@ -1,4 +1,5 @@
-package apicore
+// Package metaerr provides error wrapping with structured metadata for logging.
+package metaerr
 
 import (
 	"errors"

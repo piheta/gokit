@@ -1,5 +1,5 @@
-// Package apicore provides utilities for building HTTP API services.
-package apicore
+// Package response provides HTTP response helpers for JSON and status code responses.
+package response
 
 import (
 	"encoding/json"

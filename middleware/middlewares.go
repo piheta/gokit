@@ -1,5 +1,5 @@
-// Package apicore provides utilities for building HTTP API services.
-package apicore
+// Package middleware provides HTTP middleware utilities for API request handling and logging.
+package middleware
 
 import (
 	"encoding/json"
@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/piheta/apicore/apierr"
+	"github.com/piheta/apicore/metaerr"
 )
 
 // APIFunc is a handler function that returns an error.
@@ -17,7 +20,7 @@ type APIFunc func(w http.ResponseWriter, r *http.Request) error
 func Public(h APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := h(w, r); err != nil {
-			err := MapError(err, r)
+			err := apierr.MapError(err, r)
 
 			w.WriteHeader(err.StatusCode)
 			if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -64,11 +67,11 @@ func RouterRequestLogger(next http.Handler) http.Handler {
 		// Log based on status code
 		if status >= http.StatusBadRequest {
 			// Include original error details and metadata if available
-			if originalErr, ok := r.Context().Value(OriginalErrorContextKey).(error); ok {
+			if originalErr, ok := r.Context().Value(apierr.OriginalErrorContextKey).(error); ok {
 				attrs = append(attrs, slog.String("error_detail", originalErr.Error()))
 
 				// Add structured metadata from the original error
-				metadata := GetMetadata(originalErr)
+				metadata := metaerr.GetMetadata(originalErr)
 				attrs = append(attrs, metadata...)
 			}
 

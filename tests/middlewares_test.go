@@ -1,4 +1,4 @@
-package test
+package tests
 
 import (
 	"encoding/json"
@@ -7,12 +7,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/piheta/apicore"
+	"github.com/piheta/apicore/apierr"
+	"github.com/piheta/apicore/middleware"
+	"github.com/piheta/apicore/response"
 )
 
 func TestPublic_SuccessfulHandler(t *testing.T) {
-	handler := apicore.Public(func(w http.ResponseWriter, _ *http.Request) error {
-		_ = apicore.JSON(w, http.StatusOK, map[string]string{"message": "success"})
+	handler := middleware.Public(func(w http.ResponseWriter, _ *http.Request) error {
+		_ = response.JSON(w, http.StatusOK, map[string]string{"message": "success"})
 		return nil
 	})
 
@@ -36,8 +38,8 @@ func TestPublic_SuccessfulHandler(t *testing.T) {
 }
 
 func TestPublic_APIErrorHandler(t *testing.T) {
-	handler := apicore.Public(func(_ http.ResponseWriter, _ *http.Request) error {
-		return apicore.NewError(http.StatusBadRequest, "validation", "invalid input")
+	handler := middleware.Public(func(_ http.ResponseWriter, _ *http.Request) error {
+		return apierr.NewError(http.StatusBadRequest, "validation", "invalid input")
 	})
 
 	w := httptest.NewRecorder()
@@ -49,7 +51,7 @@ func TestPublic_APIErrorHandler(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 
-	var result apicore.APIError
+	var result apierr.APIError
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
@@ -63,7 +65,7 @@ func TestPublic_APIErrorHandler(t *testing.T) {
 }
 
 func TestPublic_UnmappedErrorHandler(t *testing.T) {
-	handler := apicore.Public(func(_ http.ResponseWriter, _ *http.Request) error {
+	handler := middleware.Public(func(_ http.ResponseWriter, _ *http.Request) error {
 		return io.ErrUnexpectedEOF
 	})
 
@@ -77,7 +79,7 @@ func TestPublic_UnmappedErrorHandler(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
 	}
 
-	var result apicore.APIError
+	var result apierr.APIError
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
@@ -88,8 +90,8 @@ func TestPublic_UnmappedErrorHandler(t *testing.T) {
 }
 
 func TestPublic_RequestCancelledHandler(t *testing.T) {
-	handler := apicore.Public(func(_ http.ResponseWriter, _ *http.Request) error {
-		return apicore.NewError(http.StatusBadRequest, "test", "")
+	handler := middleware.Public(func(_ http.ResponseWriter, _ *http.Request) error {
+		return apierr.NewError(http.StatusBadRequest, "test", "")
 	})
 
 	w := httptest.NewRecorder()
@@ -97,7 +99,7 @@ func TestPublic_RequestCancelledHandler(t *testing.T) {
 
 	handler(w, r)
 
-	var result apicore.APIError
+	var result apierr.APIError
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
@@ -108,8 +110,8 @@ func TestPublic_RequestCancelledHandler(t *testing.T) {
 }
 
 func TestPublic_HeaderSet(t *testing.T) {
-	handler := apicore.Public(func(w http.ResponseWriter, _ *http.Request) error {
-		_ = apicore.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	handler := middleware.Public(func(w http.ResponseWriter, _ *http.Request) error {
+		_ = response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return nil
 	})
 
@@ -126,9 +128,9 @@ func TestPublic_HeaderSet(t *testing.T) {
 
 func TestPublic_MultipleHandlerCalls(t *testing.T) {
 	callCount := 0
-	handler := apicore.Public(func(w http.ResponseWriter, _ *http.Request) error {
+	handler := middleware.Public(func(w http.ResponseWriter, _ *http.Request) error {
 		callCount++
-		_ = apicore.JSON(w, http.StatusOK, map[string]int{"count": callCount})
+		_ = response.JSON(w, http.StatusOK, map[string]int{"count": callCount})
 		return nil
 	})
 
@@ -148,8 +150,8 @@ func TestPublic_MultipleHandlerCalls(t *testing.T) {
 }
 
 func TestPublic_ComplexErrorMessage(t *testing.T) {
-	handler := apicore.Public(func(_ http.ResponseWriter, _ *http.Request) error {
-		return apicore.NewError(
+	handler := middleware.Public(func(_ http.ResponseWriter, _ *http.Request) error {
+		return apierr.NewError(
 			http.StatusUnprocessableEntity,
 			"validation",
 			map[string]any{
@@ -168,7 +170,7 @@ func TestPublic_ComplexErrorMessage(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusUnprocessableEntity, w.Code)
 	}
 
-	var result apicore.APIError
+	var result apierr.APIError
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
@@ -179,8 +181,8 @@ func TestPublic_ComplexErrorMessage(t *testing.T) {
 }
 
 func BenchmarkPublic(b *testing.B) {
-	handler := apicore.Public(func(w http.ResponseWriter, _ *http.Request) error {
-		_ = apicore.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	handler := middleware.Public(func(w http.ResponseWriter, _ *http.Request) error {
+		_ = response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return nil
 	})
 
